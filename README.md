@@ -107,8 +107,16 @@ docker run --rm \
 
 ### Host cron
 
+**PAT auth (token in `GIT_REMOTE_URL`):**
+
 ```cron
 17 4 * * * cd /srv/mmscheduler-scraper && docker run --rm --env-file data/.env -v "$PWD/data":/data mmscheduler-scraper >> data/logs/cron.log 2>&1
+```
+
+**Deploy-key auth (SSH):** add the key mount and `GIT_SSH_COMMAND`:
+
+```cron
+17 4 * * * cd /srv/mmscheduler-scraper && docker run --rm --env-file data/.env -v "$PWD/data":/data -v "$HOME/.ssh/mmscheduler_deploy":/deploy_key:ro -e GIT_SSH_COMMAND="ssh -i /deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" mmscheduler-scraper >> data/logs/cron.log 2>&1
 ```
 
 The `logs/` directory must exist before the first cron tick or the redirect will
