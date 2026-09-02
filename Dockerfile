@@ -8,9 +8,11 @@
 
 FROM mcr.microsoft.com/playwright:v1.62.1-noble
 
-# python3 runs transform.py; git is needed to clone/push the target repo.
+# python3 runs transform.py. git + openssh-client are needed to clone/push the
+# target repo — over HTTPS with a token in GIT_REMOTE_URL, or over SSH with a
+# mounted deploy key (see the README's Docker section).
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 git \
+  && apt-get install -y --no-install-recommends python3 git openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

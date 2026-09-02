@@ -78,6 +78,33 @@ docker run --rm \
 
 `--dry-run` works too: append `--dry-run` to the `docker run` command.
 
+#### Auth for the git push: PAT vs deploy key
+
+- **Personal access token (HTTPS):** a fine-grained PAT with `Contents: read
+  and write` on the repo, embedded in `GIT_REMOTE_URL` (above). Simplest — no
+  extra mounts; the image already ships everything.
+- **Deploy key (SSH):** repo-scoped, no personal token. Requires admin on the
+  repo to add the public key (Settings → Deploy keys → “Allow write access”).
+  Generate a keypair on the server, then mount the private key into the
+  container and tell git to use it:
+
+  ```bash
+  ssh-keygen -t ed25519 -f ~/.ssh/mmscheduler_deploy -N "" -C "mmscheduler-scraper"
+  # add ~/.ssh/mmscheduler_deploy.pub to the repo's Deploy keys (admin), write access
+  ssh -T -i ~/.ssh/mmscheduler_deploy git@github.com   # expect "Hi <repo>! ..."
+  ```
+
+  ```bash
+  docker run --rm \
+    --env-file /srv/mmscheduler-scraper/data/.env \
+    -v /srv/mmscheduler-scraper/data:/data \
+    -v /home/USER/.ssh/mmscheduler_deploy:/deploy_key:ro \
+    -e GIT_SSH_COMMAND="ssh -i /deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+    mmscheduler-scraper
+  ```
+
+  and set `GIT_REMOTE_URL=git@github.com:Muhd-Mairaj/mmscheduler.git` in `.env`.
+
 ### Host cron
 
 ```cron
@@ -91,8 +118,11 @@ fail; the first manual `docker run` creates it.
 
 See `.env.example` for every variable. The important ones:
 
-- `GIT_REMOTE_URL` (required) — the mmscheduler repo with a token for the push,
-  e.g. `https://x-access-token:PAT@github.com/Muhd-Mairaj/mmscheduler.git`.
+- `GIT_REMOTE_URL` (required) — the mmscheduler repo. Either auth over HTTPS
+  with a personal access token embedded, e.g.
+  `https://x-access-token:PAT@github.com/Muhd-Mairaj/mmscheduler.git`, **or**
+  over SSH with a repo deploy key, `git@github.com:Muhd-Mairaj/mmscheduler.git`
+  (then the key must be available to git — see below).
 - `GIT_TARGET_BRANCH` — branch the app JSON is pushed to (default `main`; must
   already exist on `origin`). Point it at a scratch branch to test without
   triggering a Netlify deploy. `fetch.mjs` fails fast if the branch lacks the
