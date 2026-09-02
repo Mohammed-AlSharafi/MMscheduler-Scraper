@@ -130,7 +130,7 @@ async function main() {
           log(`[page] ${text}`);
         }
       });
-      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: config.navigationTimeoutMs });
       // Wait out the initial SSO redirect so a momentary pre-redirect URL isn't
       // mistaken for a valid session. With a valid session there is no bounce,
       // so this waits a short grace period and proceeds.

@@ -36,6 +36,10 @@ export const config = {
 
   // --- fetch.mjs browser orchestration ---
   scriptRetries: int('SCRIPT_RETRIES', 3), // reload-and-retry per browser script
+  // Timeout for navigating to the TimeEdit students page. The first load after
+  // the short-lived token dies bounces through the silent SSO re-auth chain,
+  // which can take well over Playwright's 30s default.
+  navigationTimeoutMs: int('NAVIGATION_TIMEOUT_MS', 2 * 60 * 1000),
   lecturerTimeoutMs: int('LECTURER_TIMEOUT_MS', 5 * 60 * 1000),
   courseTimeoutMs: int('COURSE_TIMEOUT_MS', 50 * 60 * 1000),
   sessionBounceMs: int('SESSION_BOUNCE_MS', 15_000), // wait for SSO bounce before judging

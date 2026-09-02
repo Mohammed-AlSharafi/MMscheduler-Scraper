@@ -15,7 +15,7 @@ const context = await browser.newContext();
 const page = await context.newPage();
 
 console.log(`Opening ${BASE_URL}. Log in through the UM SSO in the opened window.`);
-await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: config.navigationTimeoutMs });
 
 // Wait out the initial SSO redirect so the momentary pre-redirect students URL
 // isn't mistaken for a completed login.
