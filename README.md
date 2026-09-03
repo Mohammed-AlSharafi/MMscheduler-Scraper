@@ -152,3 +152,11 @@ use it.
 ```
 download raw data  →  clean it  →  push it to git (only if it changed)
 ```
+
+## Credits
+
+The data-cleaning logic is based on
+[um-timetable-sdk](https://github.com/damnitjoshua/um-timetable-sdk), an
+open-source JavaScript toolkit by
+[damnitjoshua](https://github.com/damnitjoshua) for pulling Universiti Malaya
+timetable data out of TimeEdit.
