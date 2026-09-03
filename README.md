@@ -155,8 +155,14 @@ download raw data  →  clean it  →  push it to git (only if it changed)
 
 ## Credits
 
-The data-cleaning logic is based on
+This project builds on
 [um-timetable-sdk](https://github.com/damnitjoshua/um-timetable-sdk), an
 open-source JavaScript toolkit by
 [damnitjoshua](https://github.com/damnitjoshua) for pulling Universiti Malaya
-timetable data out of TimeEdit.
+timetable data out of TimeEdit. In particular:
+
+- the in-page `scripts/` helpers (`lecturer.js`, and the course fetcher that
+  replaces the SDK's `main.js` crawl),
+- and the data-cleaning logic in `cleaner.js`,
+
+are based on the SDK.
