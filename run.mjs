@@ -1,6 +1,7 @@
-// Run on the SERVER (daily cron). The whole pipeline in one script:
-//   1. load the copied SSO session and download the raw TimeEdit data,
-//   2. run cleaner.js + transform.py to produce the app-format JSON,
+// Run on the SERVER (daily cron): the entrypoint that drives the steps/ pipeline.
+//   1. load the copied SSO session and run the in-page fetchers in steps/fetch/
+//      (lecturer.js, courses.js) to download the raw TimeEdit data,
+//   2. run steps/clean.mjs + steps/transform.py to produce the app-format JSON,
 //   3. if that JSON differs from what is committed on the target branch
 //      (GIT_TARGET_BRANCH), commit and push it — which triggers the Netlify
 //      rebuild when the target is main.
@@ -19,13 +20,13 @@ import { probeSession, reauthenticate } from './lib/reauth.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = path.join(config.dataDir, '.raw'); // raw downloads (plain dir)
 const REPO_DIR = path.join(config.dataDir, '.repo'); // git clone of the repo at target branch
-const WORK_DIR = path.join(config.dataDir, '.work'); // cleaner/transform scratch
+const WORK_DIR = path.join(config.dataDir, '.work'); // clean/transform scratch
 const LOGS_DIR = path.join(config.dataDir, 'logs');
 const STORAGE_STATE = path.join(config.dataDir, 'storageState.json');
 const COURSE_RAW = 'course_events_with_details.json';
 const LECTURER_RAW = 'lecturer_data.json';
 
-// Params handed to the in-page fetch-courses-page.js (it cannot read .env).
+// Params handed to the in-page steps/fetch/courses.js (it cannot read .env).
 const coursePageConfig = {
   baseUrl: config.baseUrl,
   pageSize: config.coursePageSize,
@@ -35,11 +36,11 @@ const coursePageConfig = {
   retries: config.courseRetries,
 };
 const SCRIPTS = [
-  { script: 'scripts/lecturer.js', filename: LECTURER_RAW, timeoutMs: config.lecturerTimeoutMs, pageConfig: null },
-  // fetch-courses-page.js replaces the SDK main.js crawl: it enumerates ~29k
+  { script: 'steps/fetch/lecturer.js', filename: LECTURER_RAW, timeoutMs: config.lecturerTimeoutMs, pageConfig: null },
+  // steps/fetch/courses.js replaces the SDK main.js crawl: it enumerates ~29k
   // course objects concurrently but only pulls details + reservation HTML for
   // the ~2.5k that have events. A full run is ~25 min, hence the long timeout.
-  { script: 'scripts/fetch-courses-page.js', filename: COURSE_RAW, timeoutMs: config.courseTimeoutMs, pageConfig: coursePageConfig },
+  { script: 'steps/fetch/courses.js', filename: COURSE_RAW, timeoutMs: config.courseTimeoutMs, pageConfig: coursePageConfig },
 ];
 const RETRIES = config.scriptRetries;
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -80,24 +81,24 @@ async function runScript(page, { script, filename, timeoutMs, pageConfig }) {
   }
 }
 
-// cleaner.js reads the two raw files and writes timetable_data.json into cwd;
-// transform.py reads ./timetable_data.json and writes the app JSON to appOut.
+// steps/clean.mjs reads the two raw files and writes timetable_data.json into cwd;
+// steps/transform.py reads ./timetable_data.json and writes the app JSON to appOut.
 function runTransform() {
   const appOut = path.join(WORK_DIR, 'app_output.json');
   fs.mkdirSync(WORK_DIR, { recursive: true });
   execFileSync(
     'node',
-    [path.join(__dirname, 'cleaner.js'), path.join(RAW_DIR, COURSE_RAW), path.join(RAW_DIR, LECTURER_RAW)],
+    [path.join(__dirname, 'steps', 'clean.mjs'), path.join(RAW_DIR, COURSE_RAW), path.join(RAW_DIR, LECTURER_RAW)],
     { cwd: WORK_DIR, stdio: 'inherit' },
   );
-  execFileSync('python3', [path.join(__dirname, 'transform.py'), appOut], { cwd: WORK_DIR, stdio: 'inherit' });
+  execFileSync('python3', [path.join(__dirname, 'steps', 'transform.py'), appOut], { cwd: WORK_DIR, stdio: 'inherit' });
   return appOut;
 }
 
 async function main() {
   if (!remoteUrl) throw new Error('GIT_REMOTE_URL not set (see .env)');
   if (!fs.existsSync(STORAGE_STATE)) {
-    throw new Error('storageState.json missing. Run auth.mjs on your machine and upload it.');
+    throw new Error('storageState.json missing. Run npm run auth on your machine and upload it.');
   }
 
   // One-time migration: .raw used to be a git clone of the raw-data branch.
@@ -149,14 +150,14 @@ async function main() {
         try {
           await waitForLoggedIn(sessionPage, config.sessionReauthMs);
         } catch {
-          throw new Error('Session expired: TimeEdit redirected to SSO. Re-run auth.mjs on your machine and re-upload storageState.json.');
+          throw new Error('Session expired: TimeEdit redirected to SSO. Re-run npm run auth on your machine and re-upload storageState.json.');
         }
       }
       if (!(await probeSession(sessionPage))) {
         log('TimeEdit session stale; attempting silent re-auth');
         if (!(await reauthenticate(context))) {
           throw new Error(
-            'Session expired: silent re-auth failed. Re-run auth.mjs on your machine and re-upload storageState.json.',
+            'Session expired: silent re-auth failed. Re-run npm run auth on your machine and re-upload storageState.json.',
           );
         }
         log('re-auth OK; TimeEdit session refreshed');
@@ -190,7 +191,7 @@ async function main() {
         try {
           await waitForLoggedIn(page, config.sessionReauthMs);
         } catch {
-          throw new Error('Session expired: TimeEdit redirected to SSO. Re-run auth.mjs on your machine and re-upload storageState.json.');
+          throw new Error('Session expired: TimeEdit redirected to SSO. Re-run npm run auth on your machine and re-upload storageState.json.');
         }
       }
       await runScript(page, entry);

@@ -3,8 +3,8 @@
 // to the server.
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { config } from './config.mjs';
-import { BASE_URL, bouncedToSso, waitForLoggedIn } from './lib/session.mjs';
+import { config } from '../config.mjs';
+import { BASE_URL, bouncedToSso, waitForLoggedIn } from '../lib/session.mjs';
 
 // Writes next to the code (project dir) on your machine; in Docker this is
 // overridden by DATA_DIR, where storageState.json is mounted in.

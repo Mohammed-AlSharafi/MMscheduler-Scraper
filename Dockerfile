@@ -2,13 +2,13 @@
 #
 # A run-once image: the host schedules it (e.g. cron runs
 # `docker run --rm ... mmscheduler_scraper`), the container runs
-# `node fetch.mjs`, and exits. Config comes from --env-file (GIT_REMOTE_URL
+# `node run.mjs`, and exits. Config comes from --env-file (GIT_REMOTE_URL
 # etc.); scratch, logs and storageState.json live on a volume mounted at
 # DATA_DIR so state survives between runs.
 
 FROM mcr.microsoft.com/playwright:v1.62.1-noble
 
-# python3 runs transform.py. git + openssh-client are needed to clone/push the
+# python3 runs steps/transform.py. git + openssh-client are needed to clone/push the
 # target repo — over HTTPS with a token in GIT_REMOTE_URL, or over SSH with a
 # mounted deploy key (see the README's Docker section).
 RUN apt-get update \
@@ -33,4 +33,4 @@ ENV DATA_DIR=/data
 # `-e GIT_SSH_COMMAND=...` if your key lives elsewhere.
 ENV GIT_SSH_COMMAND="ssh -i /deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 
-ENTRYPOINT ["node", "fetch.mjs"]
+ENTRYPOINT ["node", "run.mjs"]

@@ -1,5 +1,6 @@
-const fs = require('fs');
- 
+import fs from 'node:fs';
+
+
 function cleanTimetableData(jsonData, lecturerData, activitiesToInclude) {
   const cleanedModules = {};
   const lecturerMap = new Map();
@@ -151,7 +152,7 @@ const lecturerDataFilePath = process.argv[3]; // Path to lecturer data JSON
 
 if (!moduleDataFilePath || !lecturerDataFilePath) {
   console.error("Please provide both module data and lecturer data JSON file paths as command line arguments.");
-  console.error("Usage: node cleaner.js <module_data_file_path> <lecturer_data_file_path>");
+  console.error("Usage: node steps/clean.mjs <module_data_file_path> <lecturer_data_file_path>");
   process.exit(1);
 }
 

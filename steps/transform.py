@@ -1,4 +1,4 @@
-"""Transform cleaner.js output (timetable_data.json) into the mmscheduler app
+"""Transform the clean step's output (timetable_data.json) into the mmscheduler app
 format: {course_id: [occurrence_record, ...]}.
 
 Reads timetable_data.json from the current working directory. This is a port of
@@ -22,7 +22,7 @@ ACTIVITY_TYPE_MAP = {
 
 
 def transform_timetable(timetable_data):
-    """timetable_data: list of module dicts from cleaner.js.
+    """timetable_data: list of module dicts from the clean step (steps/clean.mjs).
     Returns {module_code: [occurrence_dict, ...]} in app format."""
     updated_data = {}
     for course in timetable_data:

@@ -12,11 +12,11 @@
 //      cleaner expects.
 //
 // It must run inside the TimeEdit page (the API rejects requests that did not
-// come from a page that executed its JavaScript). fetch.mjs injects it exactly
+// come from a page that executed its JavaScript). run.mjs injects it exactly
 // like it did main.js and captures the download.
 
 (async () => {
-  // Config is injected by fetch.mjs (the page cannot read .env); fall back to
+  // Config is injected by run.mjs (the page cannot read .env); fall back to
   // the same defaults when run standalone.
   const CFG = (typeof window !== 'undefined' && window.__MMS_CONFIG__) || {};
   const BASE_URL = CFG.baseUrl || 'https://cloud.timeedit.net/my_um/web/students/';

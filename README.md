@@ -145,13 +145,23 @@ docker build -t mmscheduler-scraper .
 The last command rebuilds the program with the new code. The next run will
 use it.
 
-## What the main file does
+## How the files fit together
 
-`node fetch.mjs` is the whole pipeline:
+`node run.mjs` is the entrypoint: on the server it loads the saved session,
+runs the fetch scripts in the browser, cleans and transforms the data, and
+pushes it to git — but only if it changed. The pipeline steps live under
+`steps/`, each in its own file:
 
 ```
-download raw data  →  clean it  →  push it to git (only if it changed)
+steps/auth.mjs      on YOUR computer, once: npm run auth saves the UM session
+steps/fetch/        in-page scripts (lecturer.js, courses.js) that download
+                    the raw TimeEdit data
+steps/clean.mjs     combines the two raw downloads into timetable_data.json
+steps/transform.py  restructures that into the app's JSON format
 ```
+
+`config.mjs` holds every setting, and `lib/` has the shared helpers (session
+handling, git, notifications).
 
 ## Credits
 
@@ -161,8 +171,8 @@ open-source JavaScript toolkit by
 [damnitjoshua](https://github.com/damnitjoshua) for pulling Universiti Malaya
 timetable data out of TimeEdit. In particular:
 
-- the in-page `scripts/` helpers (`lecturer.js`, and the course fetcher that
-  replaces the SDK's `main.js` crawl),
-- and the data-cleaning logic in `cleaner.js`,
+- the in-page fetchers in `steps/fetch/` (`lecturer.js`, and the course
+  fetcher that replaces the SDK's `main.js` crawl),
+- and the data-cleaning logic in `steps/clean.mjs`,
 
 are based on the SDK.

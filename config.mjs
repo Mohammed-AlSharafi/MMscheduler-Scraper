@@ -27,14 +27,14 @@ export const config = {
   // --- TimeEdit ---
   baseUrl: str('TIMEEDIT_BASE_URL', 'https://cloud.timeedit.net/my_um/web/students/'),
 
-  // --- Course fetch (injected into the in-page fetch-courses-page.js) ---
+  // --- Course fetch (injected into the in-page steps/fetch/courses.js) ---
   courseConcurrency: int('COURSE_CONCURRENCY', 40), // requests in flight for event/detail probes
   coursePageConcurrency: int('COURSE_PAGE_CONCURRENCY', 12), // objects.html page fetches
   coursePageSize: int('COURSE_PAGE_SIZE', 100),
   courseMaxObjects: int('COURSE_MAX_OBJECTS', 30000),
   courseRetries: int('COURSE_RETRIES', 3),
 
-  // --- fetch.mjs browser orchestration ---
+  // --- run.mjs browser orchestration ---
   scriptRetries: int('SCRIPT_RETRIES', 3), // reload-and-retry per browser script
   // Timeout for navigating to the TimeEdit students page. The first load after
   // the short-lived token dies bounces through the silent SSO re-auth chain,
@@ -46,7 +46,7 @@ export const config = {
   sessionReauthMs: int('SESSION_REAUTH_MS', 90_000), // grace for silent SSO re-auth
   logKeepDays: int('LOG_KEEP_DAYS', 14),
 
-  // --- git push (used directly by fetch.mjs) ---
+  // --- git push (used directly by run.mjs) ---
   gitRemoteUrl: str('GIT_REMOTE_URL', ''),
   // Branch the transformed app JSON is committed + pushed to. Push to main
   // triggers the Netlify rebuild; point elsewhere to test without deploying.
