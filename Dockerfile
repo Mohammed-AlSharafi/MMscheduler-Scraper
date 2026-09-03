@@ -27,4 +27,10 @@ COPY . .
 # Scratch, logs, and storageState.json live on the mounted DATA_DIR volume.
 ENV DATA_DIR=/data
 
+# Git auth: the deploy-key setup mounts the private key at /deploy_key and this
+# tells git to use it. Only consulted for SSH remotes (git@github.com:...); an
+# HTTPS GIT_REMOTE_URL (PAT in the URL) is unaffected. Override with
+# `-e GIT_SSH_COMMAND=...` if your key lives elsewhere.
+ENV GIT_SSH_COMMAND="ssh -i /deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
 ENTRYPOINT ["node", "fetch.mjs"]

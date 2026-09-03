@@ -1,8 +1,9 @@
 // Run on the SERVER (daily cron). The whole pipeline in one script:
 //   1. load the copied SSO session and download the raw TimeEdit data,
 //   2. run cleaner.js + transform.py to produce the app-format JSON,
-//   3. if that JSON differs from what is committed on `main`, commit and push
-//      it — which triggers the Netlify rebuild.
+//   3. if that JSON differs from what is committed on the target branch
+//      (GIT_TARGET_BRANCH), commit and push it — which triggers the Netlify
+//      rebuild when the target is main.
 // (The GitHub Action + raw-data branch are gone; this script owns everything.)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +14,7 @@ import { config } from './config.mjs';
 import { BASE_URL, bouncedToSso, isLoggedIn, waitForLoggedIn } from './lib/session.mjs';
 import { ensureClone, stageAppJson, commitAndPush, APP_JSON } from './lib/git.mjs';
 import { notify } from './lib/notify.mjs';
+import { probeSession, reauthenticate } from './lib/reauth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = path.join(config.dataDir, '.raw'); // raw downloads (plain dir)
@@ -116,9 +118,53 @@ async function main() {
   }
   log('repo ready');
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    // TE Auth (TimeEdit's login script) does not boot for a default headless
+    // client, so the run uses a normal Chrome UA with the automation flag off.
+    // Harmless for the data fetch; required for the silent re-auth below.
+    args: ['--disable-blink-features=AutomationControlled'],
+  });
   try {
-    const context = await browser.newContext({ storageState: STORAGE_STATE });
+    const context = await browser.newContext({
+      storageState: STORAGE_STATE,
+      userAgent:
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    });
+
+    // Establish a live TimeEdit session up front. The TimeEdit session cookie is
+    // short-lived; once stale (e.g. the previous run was hours ago) the data
+    // APIs answer 412 with no silent recovery unless we drive the login. Probe
+    // one object endpoint; if it 412s, run the headless re-auth, which uses the
+    // persistent Entra cookie for a silent sign-in (see lib/reauth.mjs).
+    {
+      const sessionPage = await context.newPage();
+      sessionPage.on('console', (msg) => {
+        const text = msg.text();
+        if (msg.type() === 'error') log(`[page] ${text}`);
+      });
+      await sessionPage.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: config.navigationTimeoutMs });
+      const bounced = await bouncedToSso(sessionPage, config.sessionBounceMs);
+      if (bounced || !(await isLoggedIn(sessionPage))) {
+        try {
+          await waitForLoggedIn(sessionPage, config.sessionReauthMs);
+        } catch {
+          throw new Error('Session expired: TimeEdit redirected to SSO. Re-run auth.mjs on your machine and re-upload storageState.json.');
+        }
+      }
+      if (!(await probeSession(sessionPage))) {
+        log('TimeEdit session stale; attempting silent re-auth');
+        if (!(await reauthenticate(context))) {
+          throw new Error(
+            'Session expired: silent re-auth failed. Re-run auth.mjs on your machine and re-upload storageState.json.',
+          );
+        }
+        log('re-auth OK; TimeEdit session refreshed');
+      }
+      await sessionPage.close();
+      await context.storageState({ path: STORAGE_STATE });
+    }
+
     for (const entry of SCRIPTS) {
       const page = await context.newPage();
       // Surface the in-page fetch's progress + failures (per-phase timing,
@@ -164,7 +210,7 @@ async function main() {
   log('raw data downloaded; running cleaner + transform');
   const appOut = runTransform();
 
-  const changed = stageAppJson(REPO_DIR, appOut);
+  const changed = stageAppJson(REPO_DIR, appOut, config.targetBranch);
   if (!changed) {
     log('app data unchanged; nothing to push');
     await notify('Timetable refresh: raw data fetched, app data unchanged');
@@ -179,7 +225,8 @@ async function main() {
 
   commitAndPush(REPO_DIR, `Update timetable data ${new Date().toISOString().slice(0, 10)}`, config.targetBranch);
   log(`pushed ${config.targetBranch}`);
-  await notify('Timetable data changed; pushed to main (Netlify redeploying)');
+  const deployNote = config.targetBranch === 'main' ? ' (Netlify redeploying)' : '';
+  await notify(`Timetable data changed; pushed to ${config.targetBranch}${deployNote}`);
 }
 
 main().catch((err) => {
