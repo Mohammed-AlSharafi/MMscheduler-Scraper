@@ -132,37 +132,6 @@ is the right choice for the live site. To test without touching the live
 site, point the line at a scratch branch instead. The branch must already
 exist on the repo and contain the app data file.
 
-## Get updates to this program
-
-When this project changes on GitHub, update the copy on the server:
-
-```bash
-cd ~/docker/mmscheduler-scraper
-git pull
-docker build -t mmscheduler-scraper .
-```
-
-The last command rebuilds the program with the new code. The next run will
-use it.
-
-## How the files fit together
-
-`node run.mjs` is the entrypoint: on the server it loads the saved session,
-runs the fetch scripts in the browser, cleans and transforms the data, and
-pushes it to git — but only if it changed. The pipeline steps live under
-`steps/`, each in its own file:
-
-```
-steps/auth.mjs      on YOUR computer, once: npm run auth saves the UM session
-steps/fetch/        in-page scripts (lecturer.js, courses.js) that download
-                    the raw TimeEdit data
-steps/clean.mjs     combines the two raw downloads into timetable_data.json
-steps/transform.py  restructures that into the app's JSON format
-```
-
-`config.mjs` holds every setting, and `lib/` has the shared helpers (session
-handling, git, notifications).
-
 ## Credits
 
 This project builds on
